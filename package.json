@@ -1,0 +1,18 @@
+{
+  "name": "build-agent-app",
+  "version": "1.0.0",
+  "description": "Command-to-deploy pipeline: describe a change, an agent edits the repo, builds/tests it, commits, pushes, and your host auto-deploys.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "simple-git": "^3.25.0"
+  }
+}
