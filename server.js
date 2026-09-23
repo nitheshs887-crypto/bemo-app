@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import { spawn } from "child_process";
 import { runPipeline } from "./lib/pipeline.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -41,6 +42,33 @@ app.get("/api/check-site", checkAccess, async (req, res) => {
     res.json({ reachable: true, status: r.status });
   } catch (e) {
     res.json({ reachable: false, error: e.message });
+  }
+});
+
+app.post("/api/run-app", checkAccess, async (req, res) => {
+  try {
+    const pythonProcess = spawn("python3", ["app.py"]);
+    let output = "";
+    let errorOutput = "";
+
+    pythonProcess.stdout.on("data", (data) => {
+      output += data.toString();
+    });
+
+    pythonProcess.stderr.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+
+    pythonProcess.on("close", (code) => {
+      res.json({
+        exitCode: code,
+        output: output,
+        error: errorOutput,
+        deployedUrl: "http://localhost:5000"
+      });
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 

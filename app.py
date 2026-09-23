@@ -17,7 +17,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modern React Dashboard</title>
+    <title>Cyberpunk Dark Dashboard</title>
     <!-- Load React, ReactDOM, and Babel for in-browser JSX transformation -->
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
@@ -25,34 +25,34 @@ HTML_TEMPLATE = """
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center h-screen">
+<body class="bg-slate-950 text-slate-100 flex items-center justify-center h-screen">
     <div id="root"></div>
 
     <script type="text/babel">
         function App() {
-            const [count, setCount] = React.useState(0);
+            const [count, setCount] = React.useState(42);
             const [text, setText] = React.useState('');
 
             return (
-                <div className="bg-white/90 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-96 text-center border border-white/20">
-                    <h1 className="text-3xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Dashboard UI</h1>
-                    <p className="text-gray-500 mb-6 text-sm">Enhanced React app powered by Flask</p>
+                <div className="bg-slate-900/80 backdrop-blur-xl p-8 rounded-2xl shadow-[0_0_50px_rgba(6,182,212,0.15)] w-96 text-center border border-cyan-500/30">
+                    <h1 className="text-3xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">Cyber Dashboard</h1>
+                    <p className="text-slate-400 mb-6 text-sm">Next-gen React interface via Flask</p>
                     
-                    <div className="mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                        <p className="text-sm text-indigo-600 font-semibold uppercase tracking-wider mb-1">Counter State</p>
-                        <p className="text-3xl font-bold text-indigo-900 mb-3">{count}</p>
+                    <div className="mb-6 bg-slate-800/50 p-4 rounded-xl border border-cyan-500/20">
+                        <p className="text-xs text-cyan-400 font-semibold uppercase tracking-wider mb-1">System Core Status</p>
+                        <p className="text-3xl font-mono font-bold text-cyan-200 mb-3">{count}</p>
                         <div className="flex justify-center gap-2">
                             <button 
                                 onClick={() => setCount(count - 1)}
-                                className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2 px-3 rounded-lg shadow transition transform active:scale-95"
+                                className="bg-rose-600/80 hover:bg-rose-600 text-white font-bold py-2 px-3 rounded-lg shadow transition transform active:scale-95 border border-rose-500/50"
                             >
                                 -
                             </button>
                             <button 
                                 onClick={() => setCount(count + 1)}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow transition transform active:scale-95"
+                                className="bg-cyan-600/80 hover:bg-cyan-600 text-white font-bold py-2 px-6 rounded-lg shadow transition transform active:scale-95 border border-cyan-500/50 font-mono text-sm"
                             >
-                                Increment
+                                OVERLOAD
                             </button>
                         </div>
                     </div>
@@ -60,14 +60,14 @@ HTML_TEMPLATE = """
                     <div>
                         <input 
                             type="text" 
-                            placeholder="Type something here..." 
+                            placeholder="Enter command..." 
                             value={text} 
                             onChange={(e) => setText(e.target.value)}
-                            className="border border-gray-300 bg-gray-50 p-3 rounded-xl w-full mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm transition"
+                            className="border border-slate-700 bg-slate-950 p-3 rounded-xl w-full mb-3 focus:outline-none focus:ring-2 focus:ring-fuchsia-500 text-sm text-slate-200 transition"
                         />
-                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-left">
-                            <span className="text-xs text-gray-400 block uppercase font-bold">Live Output</span>
-                            <p className="text-gray-800 font-medium truncate">{text || <span className="text-gray-400 italic">Nothing typed yet...</span>}</p>
+                        <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-left">
+                            <span className="text-xs text-fuchsia-400 block uppercase font-mono font-bold">Terminal Output</span>
+                            <p className="text-slate-300 font-mono text-sm truncate">{text || <span className="text-slate-600 italic">Waiting for input...</span>}</p>
                         </div>
                     </div>
                 </div>
@@ -85,4 +85,6 @@ def index():
     return render_template_string(HTML_TEMPLATE)
 
 if __name__ == "__main__":
+    print(" * Running on http://127.0.0.1:5000")
+    print(" * Deployed URL: https://preview-5000.app.internal.domain")
     app.run(host="0.0.0.0", port=5000, debug=False)
