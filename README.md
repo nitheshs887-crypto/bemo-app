@@ -1,11 +1,11 @@
 # Build Agent
 
-A real command-to-deploy pipeline:
+A real command-to-deploy pipeline powered by an agentic AI chatbot model using Llama 3.2 running locally via Ollama:
 
 ```
-user types a command
+user types a command in agentic chat bot
         ↓
-agent understands it (Claude)
+agent understands it (Llama 3.2 via local Ollama server)
         ↓
 agent finds the relevant file(s) in the repo
         ↓
@@ -19,7 +19,7 @@ git push
         ↓
 host auto-deploys (Render / Vercel / Netlify / etc., connected to the repo)
         ↓
-pipeline reports each step's status
+pipeline reports each step's status, complete output, and deployed URL
 ```
 
 This is a real Node/Express service — it actually clones the repo, edits files,
@@ -30,7 +30,7 @@ runs your build, and pushes. There's no simulation in here.
 ```bash
 npm install
 cp .env.example .env
-# edit .env and add your ANTHROPIC_API_KEY
+# ensure Ollama is running locally with Llama 3.2: ollama run llama3.2
 npm start
 ```
 
@@ -39,7 +39,7 @@ Open `http://localhost:3000`.
 To run the code in VS Code and view output:
 1. Open the project folder in VS Code (`code .`).
 2. Open the integrated terminal (`Ctrl+` ` ` or `Cmd+` `` ` ``).
-3. Run `npm start` to start the server, or run the appropriate test/script commands to see output in the terminal.
+3. Run `python app.py` (or `npm start`) to start the server, and view the complete output and deployed URL in the terminal.
 
 ## Using it
 
@@ -55,11 +55,11 @@ For each run you provide, in the form (nothing is stored server-side between req
   Netlify, etc. Leave this blank if your host is already connected to the
   repo with auto-deploy-on-push enabled — the `git push` alone will trigger
   it, so this field is only for hosts that need an explicit hook call.
-- **Command** — plain English, e.g. "add a search bar to the invoice list".
+- **Command** — plain English prompt for the agentic chat bot, e.g. "add a search bar to the invoice list".
 
 ## How each step actually works
 
-- **Find files / write code** (`lib/agent.js`) — two calls to the Claude API:
+- **Find files / write code** (`lib/agent.js`) — two calls to the local Llama 3.2 Ollama API:
   one to pick which file(s) to touch from the repo's file list, one per file
   to generate its full new content. This is a straightforward first version;
   a more advanced version would work from real diffs/patches instead of
@@ -74,8 +74,7 @@ For each run you provide, in the form (nothing is stored server-side between req
 
 ## Security — read this before exposing it beyond your own machine
 
-- `ANTHROPIC_API_KEY` lives only in your `.env` file on the server; it's
-  never sent to the browser.
+- Llama 3.2 runs locally via Ollama, so no external API keys are required for the LLM.
 - The GitHub token is supplied per-request from the browser and is never
   written to disk outside the temporary clone, which is deleted after each
   run. It **is** sent over the network to your own server on every run, so
@@ -83,8 +82,7 @@ For each run you provide, in the form (nothing is stored server-side between req
 - If you deploy this control app itself somewhere reachable by others, set
   `APP_ACCESS_KEY` in `.env` — the frontend will then be required to send it
   back as the `x-access-key` header, or requests are rejected. Without it,
-  anyone who can reach the server can spend your Anthropic API credits and
-  push to any repo they supply a token for.
+  anyone who can reach the server can push to any repo they supply a token for.
 - Prefer fine-grained, single-repo, short-expiry GitHub tokens over classic
   tokens with broad `repo` scope, and revoke them once you're done.
 
@@ -106,7 +104,7 @@ For each run you provide, in the form (nothing is stored server-side between req
 ## Deploying this app itself
 
 This is a normal Node service, so it deploys anywhere Node does — Render,
-Railway, Fly.io, a VPS, etc. Set `ANTHROPIC_API_KEY` and `APP_ACCESS_KEY` as
+Railway, Fly.io, a VPS, etc. Set `APP_ACCESS_KEY` as
 environment variables on the host, and treat the URL as sensitive: it's the
 front door to real git push access, gated only by whatever token the caller
 supplies.
