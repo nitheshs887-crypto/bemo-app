@@ -47,6 +47,6 @@ app.get("/api/check-site", checkAccess, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 app.listen(PORT, HOST, () => {
-  console.log(`Build agent listening on http://${HOST}:${PORT}`);
+  console.log(`Build agent listening on http://localhost:${PORT}`);
   console.log(`Access from Android emulator: http://10.0.2.2:${PORT}`);
 });
