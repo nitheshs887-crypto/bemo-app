@@ -36,6 +36,11 @@ npm start
 
 Open `http://localhost:3000`.
 
+To run the code in VS Code and view output:
+1. Open the project folder in VS Code (`code .`).
+2. Open the integrated terminal (`Ctrl+` ` ` or `Cmd+` `` ` ``).
+3. Run `npm start` to start the server, or run the appropriate test/script commands to see output in the terminal.
+
 ## Using it
 
 For each run you provide, in the form (nothing is stored server-side between requests):
