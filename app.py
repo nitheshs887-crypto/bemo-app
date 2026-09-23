@@ -1,3 +1,12 @@
+import os
+import subprocess
+import sys
+
+try:
+    import flask
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "flask"])
+
 from flask import Flask, render_template_string
 
 app = Flask(__name__)
