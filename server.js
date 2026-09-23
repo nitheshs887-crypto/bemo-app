@@ -94,11 +94,14 @@ app.post("/api/run-app", checkAccess, async (req, res) => {
     });
 
     pythonProcess.on("close", (code) => {
+      const protocol = req.protocol;
+      const host = req.get("host") || `localhost:${PORT}`;
+      const generatedUrl = `${protocol}://${host}/`;
       res.json({
         exitCode: code,
         output: errorOutput ? errorOutput : output,
         error: errorOutput,
-        deployedUrl: "http://172.20.10.5:5000"
+        deployedUrl: generatedUrl
       });
     });
   } catch (e) {
