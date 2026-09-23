@@ -62,7 +62,7 @@ app.post("/api/run-app", checkAccess, async (req, res) => {
     pythonProcess.on("close", (code) => {
       res.json({
         exitCode: code,
-        output: output,
+        output: errorOutput ? errorOutput : output,
         error: errorOutput,
         deployedUrl: "http://localhost:5000"
       });
