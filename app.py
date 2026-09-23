@@ -79,13 +79,13 @@ HTML_TEMPLATE = """
             return (
                 <div className="flex flex-col h-screen max-w-4xl mx-auto w-full p-4">
                     <!-- Header -->
-                    <header className="bg-slate-900/80 backdrop-blur-xl border border-cyan-500/30 p-4 rounded-2xl shadow-[0_0_30px_rgba(6,182,212,0.1)] flex items-center justify-between mb-4">
+                    <header className="bg-slate-900/85 backdrop-blur-xl border border-cyan-500/40 p-4 rounded-2xl shadow-[0_0_35px_rgba(6,182,212,0.15)] flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                             <div className="w-3 h-3 bg-cyan-400 rounded-full animate-ping"></div>
-                            <h1 class="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500 font-mono">Llama 3.2 Agentic AI</h1>
+                            <h1 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500 font-mono">Llama 3.2 Agentic AI Chatbot</h1>
                         </div>
-                        <div className="text-xs font-mono text-cyan-400 bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-500/20">
-                            Local Ollama Model
+                        <div className="text-xs font-mono text-cyan-300 bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-500/30">
+                            Active Agent
                         </div>
                     </header>
 
@@ -177,4 +177,5 @@ def chat():
 
 if __name__ == "__main__":
     print(" * Running agentic chat bot application...")
-    print(" * Running on http://127.0.0.1:5000")
+    print(" * Serving application at http://127.0.0.1:5000")
+    app.run(host="0.0.0.0", port=5000, debug=True)
