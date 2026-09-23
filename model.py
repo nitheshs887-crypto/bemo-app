@@ -1,1 +1,1 @@
-model.py
+print("Hello, World!")
