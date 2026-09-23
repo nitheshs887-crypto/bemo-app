@@ -98,7 +98,7 @@ app.post("/api/run-app", checkAccess, async (req, res) => {
         exitCode: code,
         output: errorOutput ? errorOutput : output,
         error: errorOutput,
-        deployedUrl: "http://localhost:5000"
+        deployedUrl: "http://172.20.10.5:5000"
       });
     });
   } catch (e) {
