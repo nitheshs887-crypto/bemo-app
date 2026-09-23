@@ -22,12 +22,46 @@ app.post("/api/run", checkAccess, async (req, res) => {
   if (!repoUrl || !token || !command) {
     return res.status(400).json({ error: "repoUrl, token, and command are required" });
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: "ANTHROPIC_API_KEY is not set on the server" });
-  }
   try {
     const result = await runPipeline({ repoUrl, token, branch, command, deployHookUrl });
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Chatbot endpoint using local Ollama with llama3.2
+app.post("/api/chat", checkAccess, async (req, res) => {
+  const { message, history } = req.body || {};
+  if (!message) {
+    return res.status(400).json({ error: "message is required" });
+  }
+
+  try {
+    const messages = (history || []).map(h => ({
+      role: h.role,
+      content: h.content
+    }));
+    messages.push({ role: "user", content: message });
+
+    const ollamaResponse = await fetch("http://localhost:11434/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3.2",
+        messages: messages,
+        stream: false
+      })
+    });
+
+    if (!ollamaResponse.ok) {
+      const errText = await ollamaResponse.text();
+      return res.status(500).json({ error: `Ollama error: ${errText}` });
+    }
+
+    const data = await ollamaResponse.json();
+    const reply = data.message?.content || "";
+    res.json({ reply });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
