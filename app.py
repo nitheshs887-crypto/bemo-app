@@ -2,6 +2,10 @@ import os
 import subprocess
 import sys
 import json
+import uuid
+import tempfile
+import threading
+import socket
 import urllib.request
 
 try:
@@ -14,10 +18,13 @@ try:
 except ImportError:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "requests"])
 
-from flask import Flask, render_template_string, request, jsonify
+from flask import Flask, render_template_string, request, jsonify, redirect
 import requests
 
 app = Flask(__name__)
+
+# Global dictionary to store running preview instances: preview_id -> {url, port, process, thread, files}
+active_previews = {}
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -75,9 +82,9 @@ HTML_TEMPLATE = """
                     <div className="text-center space-y-2">
                         <span className="bg-purple-500/10 border border-purple-500/30 text-purple-400 text-xs font-mono px-3 py-1 rounded-full uppercase tracking-widest">GitHub Integration</span>
                         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 font-mono">
-                            Learn Full Code & Generate Browser URL
+                            Learn Full Code & Run to Give URL
                         </h1>
-                        <p className="text-slate-400 text-sm font-mono">Paste a GitHub repository link to inspect files and generate a new interactive preview URL.</p>
+                        <p className="text-slate-400 text-sm font-mono">Paste a GitHub repository link to read full files, run the application, and generate a live browser URL.</p>
                     </div>
                     
                     <div className="bg-slate-900/80 backdrop-blur border border-purple-500/20 p-6 rounded-2xl shadow-2xl w-full flex flex-col space-y-4">
@@ -95,7 +102,7 @@ HTML_TEMPLATE = """
                                 disabled={loading}
                                 className="bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white font-mono font-bold px-6 rounded-xl shadow-lg shadow-purple-900/30 transition disabled:opacity-50"
                             >
-                                {loading ? 'Learning...' : 'Learn & Generate'}
+                                {loading ? 'Running...' : 'Run & Get URL'}
                             </button>
                         </div>
                         {error && <div className="text-red-400 text-xs font-mono bg-red-950/40 border border-red-900/50 p-3 rounded-xl">{error}</div>}
@@ -104,8 +111,8 @@ HTML_TEMPLATE = """
                     {result && (
                         <div className="bg-slate-900/80 backdrop-blur border border-purple-500/20 p-6 rounded-2xl shadow-2xl w-full flex flex-col space-y-4 font-mono">
                             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                                <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Generated Preview URL</span>
-                                <span className="text-xs text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded-md">{result.file_count} files learned</span>
+                                <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Live Execution URL</span>
+                                <span className="text-xs text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded-md">{result.file_count} files read & run</span>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <input 
@@ -120,12 +127,12 @@ HTML_TEMPLATE = """
                                     rel="noopener noreferrer"
                                     className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition inline-flex items-center"
                                 >
-                                    Open
+                                    Open App
                                 </a>
                             </div>
 
                             <div className="space-y-2 pt-2">
-                                <div className="text-xs text-slate-400 uppercase tracking-wider">Discovered Files:</div>
+                                <div className="text-xs text-slate-400 uppercase tracking-wider">Read Files & Execution Log:</div>
                                 <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                                     {result.files.map((file, index) => (
                                         <div key={index} className="bg-slate-950/60 border border-slate-800/80 px-3 py-2 rounded-lg text-xs text-slate-300 flex items-center justify-between">
@@ -144,13 +151,13 @@ HTML_TEMPLATE = """
         ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
     <footer className="text-center py-4 text-xs font-mono text-slate-500">
-        GitHub Integration &bull; Flask &bull; React &bull; Tailwind CSS
+        GitHub Full Code Reader &bull; Flask &bull; React &bull; Tailwind CSS
     </footer>
 </body>
 </html>
 """
 
-def fetch_github_repo_contents(owner, repo, path=""):
+def fetch_github_repo_contents_with_content(owner, repo, path=""):
     api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
     headers = {"Accept": "application/vnd.github.v3+json"}
     
@@ -166,53 +173,84 @@ def fetch_github_repo_contents(owner, repo, path=""):
         
     for item in items:
         if item["type"] == "file":
-            all_files.append({
+            file_data = {
                 "path": item["path"],
                 "size": item["size"],
-                "download_url": item["download_url"]
-            })
+                "download_url": item["download_url"],
+                "content": ""
+            }
+            if item["download_url"]:
+                try:
+                    file_resp = requests.get(item["download_url"])
+                    if file_resp.status_code == 200:
+                        file_data["content"] = file_resp.text
+                except Exception:
+                    pass
+            all_files.append(file_data)
         elif item["type"] == "dir":
-            all_files.extend(fetch_github_repo_contents(owner, repo, item["path"]))
+            all_files.extend(fetch_github_repo_contents_with_content(owner, repo, item["path"]))
             
     return all_files
 
-@app.route("/")
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        s.listen(1)
+        port = s.getsockname()[1]
+    return port
+
+@app.route('/')
 def index():
     return render_template_string(HTML_TEMPLATE)
 
-@app.route("/api/learn", methods=["POST"])
-def learn_repo():
+@app.route('/api/learn', methods=['POST'])
+def api_learn():
     data = request.get_json() or {}
-    repo_url = data.get("repo_url", "").strip()
+    repo_url = data.get('repo_url', '').strip()
     
     if not repo_url:
-        return jsonify({"error": "Repository URL is required"}), 400
+        return jsonify({"error": "Repository URL is required."}), 400
         
-    parts = repo_url.rstrip("/").split("/")
+    # Parse GitHub URL
+    # Expected formats: https://github.com/owner/repo or https://github.com/owner/repo.git
+    parts = repo_url.rstrip('/').split('/')
     if len(parts) < 2:
-        return jsonify({"error": "Invalid GitHub repository URL format."}), 400
+        return jsonify({"error": "Invalid GitHub repository URL."}), 400
         
+    repo = parts[-1]
+    if repo.endswith('.git'):
+        repo = repo[:-4]
     owner = parts[-2]
-    repo = parts[-1].replace(".git", "")
     
-    files = fetch_github_repo_contents(owner, repo)
+    # Fetch all repo files and content
+    files = fetch_github_repo_contents_with_content(owner, repo)
+    if not files:
+        return jsonify({"error": "Could not fetch repository contents or repository is empty."}), 400
+        
+    # Create temp directory to write files and run app
+    temp_dir = tempfile.mkdtemp(prefix="git_runner_")
+    for f in files:
+        file_path = os.path.join(temp_dir, f["path"])
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        with open(file_path, "w", encoding="utf-8", errors="ignore") as out:
+            out.write(f["content"])
+            
+    # Try to find a runnable entry point (e.g., app.py, main.py, server.py, index.js, etc.)
+    runnable_file = None
+    candidates = ["app.py", "main.py", "server.py", "index.js", "manage.py"]
     
-    import uuid
-    preview_id = uuid.uuid4().hex[:8]
-    
-    browser_url = request.host_url.rstrip("/") + f"/preview/{preview_id}"
-    
-    return jsonify({
-        "success": True,
-        "preview_id": preview_id,
-        "browser_url": browser_url,
-        "file_count": len(files),
-        "files": files
-    })
-
-@app.route("/preview/<preview_id>")
-def preview_repo(preview_id):
-    return f"<html><body style='font-family:monospace;background:#09090b;color:#f8fafc;padding:2rem;'><h2>Interactive Preview: {preview_id}</h2><p>Repository successfully learned and browser URL generated!</p><a href='/' style='color:#38bdf8;'>&larr; Back to App</a></body></html>"
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Check if any candidate exists in root or subdirs
+    for root_dir, dirs, filenames in os.walk(temp_dir):
+        for candidate in candidates:
+            if candidate in filenames:
+                runnable_file = os.path.join(root_dir, candidate)
+                break
+        if runnable_file:
+            break
+            
+    # If no standard candidate, pick any python or js file
+    if not runnable_file:
+        for root_dir, dirs, filenames in os.walk(temp_dir):
+            for fn in filenames:
+                if fn.endswith(('.py', '.js')):
+                    runnable_file = os.path.join(root_dir, fn)
