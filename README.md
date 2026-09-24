@@ -27,6 +27,7 @@ runs your build, and pushes. There's no simulation in here.
 
 ## Setup
 
+To run the code yourself and get the running URL:
 ```bash
 npm install
 cp .env.example .env
