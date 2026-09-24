@@ -7,6 +7,7 @@ import tempfile
 import threading
 import socket
 import urllib.request
+import re
 
 try:
     import flask
@@ -84,10 +85,10 @@ HTML_TEMPLATE = """
                         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 font-mono">
                             Learn Full Code & Run to Give URL
                         </h1>
-                        <p className="text-slate-400 text-sm font-mono">Paste a GitHub repository link to read full files, run the application, and generate a live browser URL.</p>
+                        <p className="text-slate-400 text-sm font-mono">Paste a GitHub repository link to check details, read full files, run the application, and generate a live browser URL.</p>
                     </div>
                     
-                    <div className="bg-slate-900/80 backdrop-blur border border-purple-500/20 p-6 rounded-2xl shadow-2xl w-full flex flex-col space-y-4">
+                    <div className="bg-slate-900/85 backdrop-blur border border-purple-500/20 p-6 rounded-2xl shadow-2xl w-full flex flex-col space-y-4">
                         <div className="flex space-x-2">
                             <input 
                                 type="text" 
@@ -109,7 +110,34 @@ HTML_TEMPLATE = """
                     </div>
 
                     {result && (
-                        <div className="bg-slate-900/80 backdrop-blur border border-purple-500/20 p-6 rounded-2xl shadow-2xl w-full flex flex-col space-y-4 font-mono">
+                        <div className="bg-slate-900/85 backdrop-blur border border-purple-500/20 p-6 rounded-2xl shadow-2xl w-full flex flex-col space-y-4 font-mono">
+                            {result.repo_info && (
+                                <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs text-cyan-400 uppercase tracking-wider font-bold">GitHub Repository Info</span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${result.repo_info.visibility === 'private' ? 'bg-amber-950 text-amber-400 border border-amber-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-850'}`}>
+                                            {result.repo_info.visibility || 'public'}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm font-bold text-white flex items-center space-x-2">
+                                        <span>{result.repo_info.owner} / {result.repo_info.name}</span>
+                                    </div>
+                                    {result.repo_info.description && (
+                                        <p className="text-xs text-slate-300">{result.repo_info.description}</p>
+                                    )}
+                                    <div className="pt-1">
+                                        <a 
+                                            href={result.repo_info.html_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-xs text-purple-400 hover:text-purple-300 underline inline-flex items-center space-x-1"
+                                        >
+                                            <span>View on GitHub &rarr;</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                                 <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Live Execution URL</span>
                                 <span className="text-xs text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded-md">{result.file_count} files read & run</span>
@@ -135,126 +163,4 @@ HTML_TEMPLATE = """
                                 <div className="text-xs text-slate-400 uppercase tracking-wider">Read Files & Execution Log:</div>
                                 <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
                                     {result.files.map((file, index) => (
-                                        <div key={index} className="bg-slate-950/60 border border-slate-800/80 px-3 py-2 rounded-lg text-xs text-slate-300 flex items-center justify-between">
-                                            <span className="truncate">{file.path}</span>
-                                            <span className="text-purple-400 text-[10px] ml-2">{file.size} bytes</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
-    <footer className="text-center py-4 text-xs font-mono text-slate-500">
-        GitHub Full Code Reader &bull; Flask &bull; React &bull; Tailwind CSS
-    </footer>
-</body>
-</html>
-"""
-
-def fetch_github_repo_contents_with_content(owner, repo, path=""):
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{path}"
-    headers = {"Accept": "application/vnd.github.v3+json"}
-    
-    response = requests.get(api_url, headers=headers)
-    if response.status_code != 200:
-        return []
-    
-    items = response.json()
-    all_files = []
-    
-    if isinstance(items, dict):
-        items = [items]
-        
-    for item in items:
-        if item["type"] == "file":
-            file_data = {
-                "path": item["path"],
-                "size": item["size"],
-                "download_url": item["download_url"],
-                "content": ""
-            }
-            if item["download_url"]:
-                try:
-                    res = requests.get(item["download_url"])
-                    if res.status_code == 200:
-                        file_data["content"] = res.text
-                except Exception:
-                    pass
-            all_files.append(file_data)
-        elif item["type"] == "dir":
-            all_files.extend(fetch_github_repo_contents_with_content(owner, repo, item["path"]))
-            
-    return all_files
-
-def find_free_port():
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(('', 0))
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        return s.getsockname()[1]
-
-@app.route('/')
-def index():
-    return render_template_string(HTML_TEMPLATE)
-
-@app.route('/api/learn', methods=['POST'])
-def api_learn():
-    data = request.json or {}
-    repo_url = data.get('repo_url', '').strip()
-    
-    if not repo_url:
-        return jsonify({"error": "Repository URL is required."}), 400
-        
-    # Parse github url
-    clean_url = repo_url.rstrip('/')
-    if clean_url.endswith('.git'):
-        clean_url = clean_url[:-4]
-        
-    parts = clean_url.split('/')
-    if len(parts) < 2:
-        return jsonify({"error": "Invalid GitHub repository URL format."}), 400
-        
-    owner = parts[-2]
-    repo = parts[-1]
-    
-    files = fetch_github_repo_contents_with_content(owner, repo)
-    if not files:
-        return jsonify({"error": "Could not fetch files from GitHub repository or repository is empty."}), 404
-        
-    # Create temp directory and write files
-    temp_dir = tempfile.mkdtemp(prefix="gh_preview_")
-    for file_info in files:
-        file_path = os.path.join(temp_dir, file_info["path"])
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, "w", encoding="utf-8", errors="ignore") as f:
-            f.write(file_info["content"])
-            
-    # Look for an entrypoint script (app.py, main.py, server.py, index.js, etc.)
-    entry_script = None
-    candidates = ["app.py", "main.py", "server.py", "run.py", "index.py"]
-    for c in candidates:
-        if os.path.exists(os.path.join(temp_dir, c)):
-            entry_script = c
-            break
-            
-    if not entry_script:
-        # search recursively or pick first python file
-        for root, dirs, filenames in os.walk(temp_dir):
-            for fn in filenames:
-                if fn.endswith('.py'):
-                    entry_script = os.path.relpath(os.path.join(root, fn), temp_dir)
-                    break
-            if entry_script:
-                break
-                
-    preview_id = str(uuid.uuid4())[:8]
-    port = find_free_port()
-    
-    process = None
-    if entry_script:
-        script_full_
+                                        <div
