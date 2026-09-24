@@ -37,10 +37,10 @@ npm start
 
 Open `http://localhost:3000`.
 
-To run `app.py` after changing the UI, show all output, and provide the deployed URL:
+To run the current code yourself and get the running URL:
 1. Open the project folder in VS Code (`code .`).
 2. Open the integrated terminal (`Ctrl+` ` ` or `Cmd+` `` ` ``).
-3. Run `python app.py` to start the application, view all complete output, and obtain the deployed URL.
+3. Run `npm start` (or `python app.py` if applicable) to start the application, view all complete output, and obtain the running deployed URL.
 
 ## Using it
 
