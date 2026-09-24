@@ -53,7 +53,7 @@ HTML_TEMPLATE = """
 
             const handleLearn = async () => {
                 if (!repoUrl.trim()) {
-                    setError('Please enter a GitHub repository URL.');
+                    setError('Please enter a GitHub repository or user URL.');
                     return;
                 }
                 setError('');
@@ -85,14 +85,14 @@ HTML_TEMPLATE = """
                         <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 font-mono">
                             Learn Full Code & Run to Give URL
                         </h1>
-                        <p className="text-slate-400 text-sm font-mono">Paste a GitHub repository link to check details, read full files, run the application, and generate a live browser URL.</p>
+                        <p className="text-slate-400 text-sm font-mono">Paste a GitHub user or repository link to check details, read full files, run the application, and generate a live browser URL.</p>
                     </div>
                     
                     <div className="bg-slate-900/85 backdrop-blur border border-purple-500/20 p-6 rounded-2xl shadow-2xl w-full flex flex-col space-y-4">
                         <div className="flex space-x-2">
                             <input 
                                 type="text" 
-                                placeholder="https://github.com/username/repository" 
+                                placeholder="https://github.com/username or https://github.com/username/repository" 
                                 value={repoUrl} 
                                 onChange={(e) => setRepoUrl(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleLearn()}
@@ -114,13 +114,19 @@ HTML_TEMPLATE = """
                             {result.repo_info && (
                                 <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-cyan-400 uppercase tracking-wider font-bold">GitHub Repository Info</span>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${result.repo_info.visibility === 'private' ? 'bg-amber-950 text-amber-400 border border-amber-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-850'}`}>
-                                            {result.repo_info.visibility || 'public'}
+                                        <span className="text-xs text-cyan-400 uppercase tracking-wider font-bold">
+                                            {result.repo_info.type === 'user' ? 'GitHub User Info' : 'GitHub Repository Info'}
                                         </span>
+                                        {result.repo_info.visibility && (
+                                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${result.repo_info.visibility === 'private' ? 'bg-amber-950 text-amber-400 border border-amber-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-850'}`}>
+                                                {result.repo_info.visibility}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="text-sm font-bold text-white flex items-center space-x-2">
-                                        <span>{result.repo_info.owner} / {result.repo_info.name}</span>
+                                        <span>
+                                            {result.repo_info.type === 'user' ? result.repo_info.name : `${result.repo_info.owner} / ${result.repo_info.name}`}
+                                        </span>
                                     </div>
                                     {result.repo_info.description && (
                                         <p className="text-xs text-slate-300">{result.repo_info.description}</p>
@@ -138,29 +144,22 @@ HTML_TEMPLATE = """
                                 </div>
                             )}
 
-                            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                                <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Live Execution URL</span>
-                                <span className="text-xs text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded-md">{result.file_count} files read & run</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <input 
-                                    type="text" 
-                                    readOnly 
-                                    value={result.browser_url} 
-                                    className="flex-1 bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-cyan-300 text-xs font-mono select-all"
-                                />
-                                <a 
-                                    href={result.browser_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition inline-flex items-center"
-                                >
-                                    Open App
-                                </a>
-                            </div>
-
-                            <div className="space-y-2 pt-2">
-                                <div className="text-xs text-slate-400 uppercase tracking-wider">Read Files & Execution Log:</div>
-                                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                                    {result.files.map((file, index) => (
-                                        <div
+                            {result.browser_url && (
+                                <>
+                                    <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                        <span className="text-sm font-bold text-cyan-400 uppercase tracking-wider">Live Execution URL</span>
+                                        <span className="text-xs text-purple-400 bg-purple-950/50 px-2 py-0.5 rounded-md">{result.file_count} files read & run</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <input 
+                                            type="text" 
+                                            readOnly 
+                                            value={result.browser_url} 
+                                            className="flex-1 bg-slate-950 border border-slate-700 p-2.5 rounded-xl text-cyan-300 text-xs font-mono select-all"
+                                        />
+                                        <a 
+                                            href={result.browser_url} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition inline-flex items-center"
+                                        >

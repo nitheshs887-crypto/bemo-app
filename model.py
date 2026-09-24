@@ -168,5 +168,4 @@ def root():
                 }
             }
 
-            async function checkGithub() {
-                const input
+            function handleGitKeyPress(event) {
