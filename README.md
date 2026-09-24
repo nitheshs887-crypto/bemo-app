@@ -27,7 +27,7 @@ runs your build, and pushes. There's no simulation in here.
 
 ## Setup
 
-To run the code yourself and get the running URL:
+To run the current code yourself and get the running URL:
 ```bash
 npm install
 cp .env.example .env
@@ -40,7 +40,7 @@ Open `http://localhost:3000`.
 To run the current code yourself and get the running URL:
 1. Open the project folder in VS Code (`code .`).
 2. Open the integrated terminal (`Ctrl+` ` ` or `Cmd+` `` ` ``).
-3. Run `npm start` (or `python app.py` if applicable) to start the application, view all complete output, and obtain the running deployed URL.
+3. Run `npm start` to start the application, view all complete output, and obtain the running deployed URL.
 
 ## Using it
 

@@ -181,9 +181,9 @@ def fetch_github_repo_contents_with_content(owner, repo, path=""):
             }
             if item["download_url"]:
                 try:
-                    file_resp = requests.get(item["download_url"])
-                    if file_resp.status_code == 200:
-                        file_data["content"] = file_resp.text
+                    res = requests.get(item["download_url"])
+                    if res.status_code == 200:
+                        file_data["content"] = res.text
                 except Exception:
                     pass
             all_files.append(file_data)
@@ -195,9 +195,8 @@ def fetch_github_repo_contents_with_content(owner, repo, path=""):
 def find_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(('', 0))
-        s.listen(1)
-        port = s.getsockname()[1]
-    return port
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
 
 @app.route('/')
 def index():
@@ -205,52 +204,57 @@ def index():
 
 @app.route('/api/learn', methods=['POST'])
 def api_learn():
-    data = request.get_json() or {}
+    data = request.json or {}
     repo_url = data.get('repo_url', '').strip()
     
     if not repo_url:
         return jsonify({"error": "Repository URL is required."}), 400
         
-    # Parse GitHub URL
-    # Expected formats: https://github.com/owner/repo or https://github.com/owner/repo.git
-    parts = repo_url.rstrip('/').split('/')
-    if len(parts) < 2:
-        return jsonify({"error": "Invalid GitHub repository URL."}), 400
+    # Parse github url
+    clean_url = repo_url.rstrip('/')
+    if clean_url.endswith('.git'):
+        clean_url = clean_url[:-4]
         
-    repo = parts[-1]
-    if repo.endswith('.git'):
-        repo = repo[:-4]
+    parts = clean_url.split('/')
+    if len(parts) < 2:
+        return jsonify({"error": "Invalid GitHub repository URL format."}), 400
+        
     owner = parts[-2]
+    repo = parts[-1]
     
-    # Fetch all repo files and content
     files = fetch_github_repo_contents_with_content(owner, repo)
     if not files:
-        return jsonify({"error": "Could not fetch repository contents or repository is empty."}), 400
+        return jsonify({"error": "Could not fetch files from GitHub repository or repository is empty."}), 404
         
-    # Create temp directory to write files and run app
-    temp_dir = tempfile.mkdtemp(prefix="git_runner_")
-    for f in files:
-        file_path = os.path.join(temp_dir, f["path"])
+    # Create temp directory and write files
+    temp_dir = tempfile.mkdtemp(prefix="gh_preview_")
+    for file_info in files:
+        file_path = os.path.join(temp_dir, file_info["path"])
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
-        with open(file_path, "w", encoding="utf-8", errors="ignore") as out:
-            out.write(f["content"])
+        with open(file_path, "w", encoding="utf-8", errors="ignore") as f:
+            f.write(file_info["content"])
             
-    # Try to find a runnable entry point (e.g., app.py, main.py, server.py, index.js, etc.)
-    runnable_file = None
-    candidates = ["app.py", "main.py", "server.py", "index.js", "manage.py"]
-    
-    # Check if any candidate exists in root or subdirs
-    for root_dir, dirs, filenames in os.walk(temp_dir):
-        for candidate in candidates:
-            if candidate in filenames:
-                runnable_file = os.path.join(root_dir, candidate)
-                break
-        if runnable_file:
+    # Look for an entrypoint script (app.py, main.py, server.py, index.js, etc.)
+    entry_script = None
+    candidates = ["app.py", "main.py", "server.py", "run.py", "index.py"]
+    for c in candidates:
+        if os.path.exists(os.path.join(temp_dir, c)):
+            entry_script = c
             break
             
-    # If no standard candidate, pick any python or js file
-    if not runnable_file:
-        for root_dir, dirs, filenames in os.walk(temp_dir):
+    if not entry_script:
+        # search recursively or pick first python file
+        for root, dirs, filenames in os.walk(temp_dir):
             for fn in filenames:
-                if fn.endswith(('.py', '.js')):
-                    runnable_file = os.path.join(root_dir, fn)
+                if fn.endswith('.py'):
+                    entry_script = os.path.relpath(os.path.join(root, fn), temp_dir)
+                    break
+            if entry_script:
+                break
+                
+    preview_id = str(uuid.uuid4())[:8]
+    port = find_free_port()
+    
+    process = None
+    if entry_script:
+        script_full_

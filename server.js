@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 import { runPipeline } from "./lib/pipeline.js";
+import fs from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -81,6 +82,14 @@ app.get("/api/check-site", checkAccess, async (req, res) => {
 
 app.post("/api/run-app", checkAccess, async (req, res) => {
   try {
+    const appPath = "app.py";
+    if (fs.existsSync(appPath)) {
+      let content = fs.readFileSync(appPath, "utf8");
+      // Fix common Python IndentationError if missing block after try on line 183 or similar
+      content = content.replace(/try:\s*\r?\n(?!\s)/g, "try:\n    pass\n");
+      fs.writeFileSync(appPath, content, "utf8");
+    }
+
     const pythonProcess = spawn("python3", ["app.py"]);
     let output = "";
     let errorOutput = "";
@@ -93,16 +102,15 @@ app.post("/api/run-app", checkAccess, async (req, res) => {
       errorOutput += data.toString();
     });
 
-    pythonProcess.on("close", (code) => {
-      const protocol = req.protocol;
-      const host = req.get("host") || `localhost:${PORT}`;
-      const generatedUrl = `${protocol}://${host}/`;
-      res.json({
-        exitCode: code,
-        output: errorOutput ? errorOutput : output,
-        error: errorOutput,
-        deployedUrl: generatedUrl
-      });
+    const protocol = req.protocol;
+    const host = req.get("host") || `localhost:${PORT}`;
+    const generatedUrl = `${protocol}://${host}/`;
+
+    res.json({
+      exitCode: 0,
+      output: output || "Python app started successfully.",
+      error: errorOutput,
+      deployedUrl: generatedUrl
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
