@@ -8,7 +8,7 @@ except ModuleNotFoundError:
     import streamlit as st
 
 st.set_page_config(
-    page_title="Streamlit App",
+    page_title="abc.py",
     page_icon="🚀",
     layout="wide"
 )
