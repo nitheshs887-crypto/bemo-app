@@ -8,8 +8,11 @@ import fs from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+// In-memory store for RAG documents
+let vectorStore = [];
 
 function checkAccess(req, res, next) {
   const required = process.env.APP_ACCESS_KEY;
@@ -31,25 +34,62 @@ app.post("/api/run", checkAccess, async (req, res) => {
   }
 });
 
-// Chatbot endpoint using local Ollama with llama3.2
+// Endpoint to upload documents for RAG
+app.post("/api/upload-doc", checkAccess, async (req, res) => {
+  const { title, content } = req.body || {};
+  if (!title || !content) {
+    return res.status(400).json({ error: "title and content are required" });
+  }
+  
+  // Simple chunking and storage
+  const chunks = content.match(/[^.!?]+[.!?]+/g) || [content];
+  chunks.forEach(chunk => {
+    vectorStore.push({
+      title,
+      content: chunk.trim()
+    });
+  });
+
+  res.json({ ok: true, message: `Document '${title}' added successfully with ${chunks.length} chunks.` });
+});
+
+// Chatbot endpoint with RAG support using dynamic model selection
 app.post("/api/chat", checkAccess, async (req, res) => {
-  const { message, history } = req.body || {};
+  const { message, history, model } = req.body || {};
   if (!message) {
     return res.status(400).json({ error: "message is required" });
   }
 
+  const selectedModel = model || "llama3.2";
+
   try {
+    // Basic RAG retrieval: find relevant chunks containing keywords from the message
+    const queryKeywords = message.toLowerCase().split(/\s+/);
+    let relevantContext = "";
+    
+    if (vectorStore.length > 0) {
+      const matches = vectorStore.filter(doc => 
+        queryKeywords.some(kw => kw.length > 3 && doc.content.toLowerCase().includes(kw))
+      );
+      if (matches.length > 0) {
+        relevantContext = "Here is some relevant context from uploaded documents:\n" + 
+          matches.map(m => `- [${m.title}]: ${m.content}`).join("\n") + "\n\n";
+      }
+    }
+
     const messages = (history || []).map(h => ({
       role: h.role,
       content: h.content
     }));
-    messages.push({ role: "user", content: message });
+
+    const augmentedMessage = relevantContext ? `${relevantContext}User Question: ${message}` : message;
+    messages.push({ role: "user", content: augmentedMessage });
 
     const ollamaResponse = await fetch("http://localhost:11434/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama3.2",
+        model: selectedModel,
         messages: messages,
         stream: false
       })
