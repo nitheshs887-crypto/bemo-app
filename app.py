@@ -65,3 +65,19 @@ elif app_mode == "Settings":
     notifications = st.toggle("Enable Notifications", value=True)
     font_size = st.slider("Font Size", 12, 24, 16)
     st.success(f"Selected theme: {theme}")
+
+if __name__ == "__main__":
+    is_streamlit = False
+    try:
+        from streamlit.runtime import exists
+        is_streamlit = exists()
+    except ImportError:
+        pass
+
+    if not is_streamlit:
+        try:
+            from streamlit.web import cli as stcli
+        except ImportError:
+            from streamlit import cli as stcli
+        sys.argv = ["streamlit", "run", __file__]
+        sys.exit(stcli.main())
