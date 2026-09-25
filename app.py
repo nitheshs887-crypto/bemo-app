@@ -8,7 +8,7 @@ except ModuleNotFoundError:
     import streamlit as st
 
 st.set_page_config(
-    page_title="abc.py",
+    page_title="vel.py",
     page_icon="🚀",
     layout="wide"
 )
